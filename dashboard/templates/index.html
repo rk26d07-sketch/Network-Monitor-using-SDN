@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDN Network Monitoring Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+    <h1>SDN Network Monitoring</h1>
+    <p>Real-time Network Telemetry and Alert Dashboard</p>
+    <span id="connection">Connecting...</span>
+</header>
+
+<main>
+    <section class="summary">
+        <div class="card"><h3>Total Hosts</h3><strong id="total">6</strong></div>
+        <div class="card"><h3>Online</h3><strong id="online">0</strong></div>
+        <div class="card"><h3>Offline</h3><strong id="offline">0</strong></div>
+        <div class="card"><h3>Total Alerts</h3><strong id="alertCount">0</strong></div>
+    </section>
+
+    <h2>Host Monitoring</h2>
+    <section id="hosts" class="hosts"></section>
+
+    <h2>Alert History</h2>
+    <section id="alerts" class="alerts">
+        <p>Waiting for alerts...</p>
+    </section>
+</main>
+
+<footer>Network Monitoring Project | UDP Telemetry + SDN/OpenFlow</footer>
+
+<script>
+async function updateDashboard() {
+    try {
+        const response = await fetch("/api/status");
+        const data = await response.json();
+
+        document.getElementById("connection").textContent =
+            data.status === "waiting" ? "Waiting for telemetry" : "Live";
+        
+        const hosts = data.hosts || {};
+        const entries = Object.entries(hosts);
+        let online = 0;
+
+        document.getElementById("hosts").innerHTML = entries.map(([ip, h]) => {
+            const isOnline = h.online;
+            if (isOnline) online++;
+
+            return `
+                <div class="host-card">
+                    <h3>${ip}</h3>
+                    <span class="${isOnline ? 'online' : 'offline'}">
+                        ${isOnline ? 'ONLINE' : 'OFFLINE'}
+                    </span>
+                    <p>CPU: ${Number(h.cpu || 0).toFixed(1)}%</p>
+                    <p>Memory: ${Number(h.memory || 0).toFixed(1)}%</p>
+                    <p>Sequence: ${h.sequence || 0}</p>
+                </div>`;
+        }).join("");
+
+        document.getElementById("total").textContent = 6;
+        document.getElementById("online").textContent = online;
+        document.getElementById("offline").textContent = 6 - online;
+
+        const alerts = data.alerts || [];
+        document.getElementById("alertCount").textContent = alerts.length;
+
+        document.getElementById("alerts").innerHTML = alerts.length
+            ? alerts.slice().reverse().map(a => `<div class="alert">${a}</div>`).join("")
+            : "<p>No alerts recorded.</p>";
+
+    } catch (error) {
+        document.getElementById("connection").textContent = "Connection error";
+    }
+}
+
+updateDashboard();
+setInterval(updateDashboard, 2000);
+</script>
+</body>
+</html>
